@@ -1,17 +1,17 @@
 import streamlit as st
 import requests
-import openai
 import pandas as pd
 import re
 import os
 import time
 import jwt
 from datetime import datetime
+from openai import OpenAI
 
 st.write("DEBUG: App is running!")  # This should appear on EVERY successful load! 
 
 # ---- CONFIGURATION ----
-GITHUB_APP_ID = st. secrets. get("GITHUB_APP_ID", "your_app_id")
+GITHUB_APP_ID = st.secrets. get("GITHUB_APP_ID", "your_app_id")
 GITHUB_INSTALLATION_ID = st.secrets.get("GITHUB_INSTALLATION_ID", "your_installation_id")
 GITHUB_PRIVATE_KEY = st.secrets.get("GITHUB_PRIVATE_KEY", "your_private_key_pem_content")
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "your_openai_api_key")
@@ -49,13 +49,13 @@ def get_github_app_token():
         url = f"https://api.github.com/app/installations/{GITHUB_INSTALLATION_ID}/access_tokens"
         response = requests.post(url, headers=headers)
         
-        if response.status_code == 201:
+        if response. status_code == 201:
             return response.json()['token']
         else:
             st.error(f"Failed to get GitHub App token: {response.status_code} - {response.text}")
             return None
     except Exception as e:
-        st. error(f"Error generating GitHub App token: {e}")
+        st.error(f"Error generating GitHub App token: {e}")
         return None
 
 # ---- UTILITY ----
@@ -67,7 +67,7 @@ def parse_github_issue_url(issue_url):
     """
     # Remove anchor if present
     url = issue_url.split('#')[0]
-    pattern = r"https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/issues/(?P<number>\d+)"
+    pattern = r"https://github\.com/(? P<owner>[^/]+)/(?P<repo>[^/]+)/issues/(?P<number>\d+)"
     match = re.match(pattern, url)
     if not match:
         return None
@@ -108,7 +108,7 @@ def extract_finance_date(issue, comments):
     if issue and issue.get("body"):
         for tag in FINANCE_TAG_LIST:
             if tag. lower() in issue["body"].lower():
-                return datetime.strptime(issue["created_at"], "%Y-%m-%dT%H:%M:%SZ").date()
+                return datetime.strptime(issue["created_at"], "%Y-%m-%dT%H:%M:%SZ"). date()
     # Scan comments for tags
     for comment in comments:
         text = comment.get("body", ""). lower()
@@ -122,7 +122,7 @@ def summarize_and_extract(issue):
     You are helping fill out an enterprise request tracking spreadsheet. 
     Issue Title: {issue['title']}
     Issue Body: {issue. get('body','')}
-    Labels: {', '.join([l['name'] for l in issue. get('labels',[])])}
+    Labels: {', '.join([l['name'] for l in issue.get('labels',[])])}
     
     Please extract or infer, in JSON, the following fields:
     - Customer Name (company or org referenced)
@@ -133,12 +133,13 @@ def summarize_and_extract(issue):
     Use what you find, don't invent facts. Leave blank any field if not clear.
     """
     try:
-        openai.api_key = OPENAI_API_KEY
-        response = openai.ChatCompletion.create(
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}]
         )
-        content = response['choices'][0]['message']['content']
+        content = response.choices[0].message. content
         content = re.sub(r"^```json|```$", "", content). strip()
         data = {}
         try:
@@ -252,6 +253,6 @@ if issue_url:
                             "ARR of GHAS License": arr_ghas_license,
                         }
                         append_to_excel(row, EXCEL_FILE)
-                        st.success("Row added to Excel!")
+                        st. success("Row added to Excel!")
                     else:
                         st.error("Please fill in all required fields (marked with *).")
