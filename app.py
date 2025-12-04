@@ -14,7 +14,7 @@ st.write("DEBUG: App is running!")  # This should appear on EVERY successful loa
 GITHUB_APP_ID = st.secrets. get("GITHUB_APP_ID", "your_app_id")
 GITHUB_INSTALLATION_ID = st.secrets.get("GITHUB_INSTALLATION_ID", "your_installation_id")
 GITHUB_PRIVATE_KEY = st.secrets.get("GITHUB_PRIVATE_KEY", "your_private_key_pem_content")
-OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "your_openai_api_key")
+GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "your_github_personal_access_token")
 EXCEL_FILE = "customer_requests.xlsx"
 
 # Map of tag to username
@@ -133,10 +133,13 @@ def summarize_and_extract(issue):
     Use what you find, don't invent facts. Leave blank any field if not clear.
     """
     try:
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        client = OpenAI(
+            api_key=GITHUB_TOKEN,
+            base_url="https://models.inference.ai.azure.com"
+        )
         
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}]
         )
         content = response.choices[0].message. content
@@ -152,7 +155,7 @@ def summarize_and_extract(issue):
                 data = {}
         return data
     except Exception as e:
-        st.warning(f"OpenAI extraction failed: {e}")
+        st.warning(f"GitHub Models extraction failed: {e}")
         return {}
 
 def extract_status_by_finance(issue, comments):
