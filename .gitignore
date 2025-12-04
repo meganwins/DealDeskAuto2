@@ -42,4 +42,5 @@ Thumbs.db
 customer_requests.xlsx
 
 # Streamlit
-.streamlit/
+.streamlit/secrets.toml
+.streamlit/config.toml
