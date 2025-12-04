@@ -146,42 +146,42 @@ def append_to_excel(row, excel_file):
 # ---- UI ----
 st.title("Enterprise Finance Request Extractor")
 
-issue_url = st.text_input("Paste GitHub Issue URL (e.g. https://github.com/org/repo/issues/123):")
+issue_url = st.text_input("Paste GitHub Issue URL (e.g. https://github.com/org/repo/issues/123):", key="main_input")
 
 if issue_url:
-    if st.button("Process and Extract"):
+    if st.button("Process and Extract", key="process_button"):
         issue, comments = get_issue_data(issue_url)
         if issue:
             extracted = summarize_and_extract(issue)
             finance_date = extract_finance_date(issue, comments)
 
-            # NEW: Use status based on finance involvement
+            # Use status based on finance involvement
             status = extract_status_by_finance(issue, comments)
             st.subheader("Review and Edit Extracted Data")
 
             with st.form("edit_form"):
-                customer_name = st.text_input("Customer Name*", extracted.get("Customer Name",""))
+                customer_name = st.text_input("Customer Name*", extracted.get("Customer Name",""), key="customer_name")
                 if finance_date:
-                    date_finance = st.date_input("Date (request to finance)*", value=finance_date)
+                    date_finance = st.date_input("Date (request to finance)*", value=finance_date, key="date_finance")
                 else:
-                    date_finance = st.date_input("Date (request to finance)*")
+                    date_finance = st.date_input("Date (request to finance)*", key="date_finance")
                 status_options = ["Approved", "Rejected", "Under Review"]
                 status_index = status_options.index(status) if status in status_options else 2
-                status = st.selectbox("Status*", status_options, index=status_index)
-                link_to_issue = st.text_input("Link to Issue*", issue_url)
-                request_type = st.text_input("Type of request*", extracted.get("Type of request",""))
-                description = st.text_area("Description / Summary*", extracted.get("Description / Summary",""))
+                status = st.selectbox("Status*", status_options, index=status_index, key="status")
+                link_to_issue = st.text_input("Link to Issue*", issue_url, key="link_to_issue")
+                request_type = st.text_input("Type of request*", extracted.get("Type of request",""), key="request_type")
+                description = st.text_area("Description / Summary*", extracted.get("Description / Summary",""), key="description")
 
-                # Optional fields
-                macc = st.text_input("MACC")
-                date_move = st.text_input("Date move takes place")
-                length_deal = st.text_input("Length of Original Deal")
-                year_transition = st.text_input("Year of deal transition")
-                years_remaining = st.text_input("Years remaining in deal")
-                arr_ghe_metered = st.text_input("ARR of GHE metered")
-                arr_ghe_license = st.text_input("ARR of GHE License")
-                arr_ghas_metered = st.text_input("ARR of GHAS metered")
-                arr_ghas_license = st.text_input("ARR of GHAS License")
+                # Optional fields — unique keys!
+                macc = st.text_input("MACC", key="macc")
+                date_move = st.text_input("Date move takes place", key="date_move")
+                length_deal = st.text_input("Length of Original Deal", key="length_deal")
+                year_transition = st.text_input("Year of deal transition", key="year_transition")
+                years_remaining = st.text_input("Years remaining in deal", key="years_remaining")
+                arr_ghe_metered = st.text_input("ARR of GHE metered", key="arr_ghe_metered")
+                arr_ghe_license = st.text_input("ARR of GHE License", key="arr_ghe_license")
+                arr_ghas_metered = st.text_input("ARR of GHAS metered", key="arr_ghas_metered")
+                arr_ghas_license = st.text_input("ARR of GHAS License", key="arr_ghas_license")
 
                 submitted = st.form_submit_button("Save to Excel")
 
@@ -209,80 +209,3 @@ if issue_url:
                         st.success("Row added to Excel!")
                     else:
                         st.error("Please fill in all required fields (marked with *).")
-
-def append_to_excel(row, excel_file):
-    if os.path.exists(excel_file):
-        df = pd.read_excel(excel_file)
-    else:
-        df = pd.DataFrame()
-    df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-    df.to_excel(excel_file, index=False)
-
-# ---- UI ----
-st.title("Enterprise Finance Request Extractor")
-
-issue_url = st.text_input("Paste GitHub Issue URL (e.g. https://github.com/org/repo/issues/123):")
-
-if issue_url:
-    if st.button("Process and Extract"):
-        issue, comments = get_issue_data(issue_url)
-        if issue:
-            extracted = summarize_and_extract(issue)
-            finance_date = extract_finance_date(issue, comments)
-
-            # NEW: Use status based on finance involvement
-            status = extract_status_by_finance(issue, comments)
-            st.subheader("Review and Edit Extracted Data")
-
-            with st.form("edit_form"):
-                customer_name = st.text_input("Customer Name*", extracted.get("Customer Name",""))
-                if finance_date:
-                    date_finance = st.date_input("Date (request to finance)*", value=finance_date)
-                else:
-                    date_finance = st.date_input("Date (request to finance)*")
-                status_options = ["Approved", "Rejected", "Under Review"]
-                status_index = status_options.index(status) if status in status_options else 2
-                status = st.selectbox("Status*", status_options, index=status_index)
-                link_to_issue = st.text_input("Link to Issue*", issue_url)
-                request_type = st.text_input("Type of request*", extracted.get("Type of request",""))
-                description = st.text_area("Description / Summary*", extracted.get("Description / Summary",""))
-
-                # Optional fields
-                macc = st.text_input("MACC")
-                date_move = st.text_input("Date move takes place")
-                length_deal = st.text_input("Length of Original Deal")
-                year_transition = st.text_input("Year of deal transition")
-                years_remaining = st.text_input("Years remaining in deal")
-                arr_ghe_metered = st.text_input("ARR of GHE metered")
-                arr_ghe_license = st.text_input("ARR of GHE License")
-                arr_ghas_metered = st.text_input("ARR of GHAS metered")
-                arr_ghas_license = st.text_input("ARR of GHAS License")
-
-                submitted = st.form_submit_button("Save to Excel")
-
-                required_fields = [customer_name, date_finance, status, link_to_issue, request_type, description]
-                if submitted:
-                    # Extra check: date must be selected by user if not auto-filled
-                    if all(required_fields) and date_finance is not None:
-                        row = {
-                            "Customer Name": customer_name,
-                            "Date (request to finance)": date_finance,
-                            "Status": status,
-                            "Link to Issue": link_to_issue,
-                            "Type of request": request_type,
-                            "Description / Summary": description,
-                            "MACC": macc,
-                            "Date move takes place": date_move,
-                            "Length of Original Deal": length_deal,
-                            "Year of deal transition": year_transition,
-                            "Years remaining in deal": years_remaining,
-                            "ARR of GHE metered": arr_ghe_metered,
-                            "ARR of GHE License": arr_ghe_license,
-                            "ARR of GHAS metered": arr_ghas_metered,
-                            "ARR of GHAS License": arr_ghas_license,
-                        }
-                        append_to_excel(row, EXCEL_FILE)
-                        st.success("Row added to Excel!")
-                    else:
-                        st.error("Please fill in all required fields (marked with *).")
-                        
