@@ -67,7 +67,7 @@ def parse_github_issue_url(issue_url):
     """
     # Remove anchor if present
     url = issue_url.split('#')[0]
-    pattern = r"https://github\.com/(? P<owner>[^/]+)/(?P<repo>[^/]+)/issues/(?P<number>\d+)"
+    pattern = r"https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/issues/(?P<number>\d+)"
     match = re.match(pattern, url)
     if not match:
         return None
