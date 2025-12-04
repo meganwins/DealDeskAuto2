@@ -4,13 +4,17 @@ import openai
 import pandas as pd
 import re
 import os
+import time
+import jwt
 from datetime import datetime
 
-st.write("DEBUG: App is running!")  # This should appear on EVERY successful load!
+st.write("DEBUG: App is running!")  # This should appear on EVERY successful load! 
 
 # ---- CONFIGURATION ----
-GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"] if "GITHUB_TOKEN" in st.secrets else "your_github_token"
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else "your_openai_api_key"
+GITHUB_APP_ID = st. secrets. get("GITHUB_APP_ID", "your_app_id")
+GITHUB_INSTALLATION_ID = st.secrets.get("GITHUB_INSTALLATION_ID", "your_installation_id")
+GITHUB_PRIVATE_KEY = st.secrets.get("GITHUB_PRIVATE_KEY", "your_private_key_pem_content")
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "your_openai_api_key")
 EXCEL_FILE = "customer_requests.xlsx"
 
 # Map of tag to username
@@ -21,16 +25,49 @@ FINANCE_TAGS = {
 }
 FINANCE_TAG_LIST = list(FINANCE_TAGS.keys())
 
+# ---- GITHUB APP AUTHENTICATION ----
+
+def get_github_app_token():
+    """
+    Generate a JWT for the GitHub App, then exchange it for an installation access token.
+    Returns the installation access token to use in API requests.
+    """
+    try:
+        # 1. Create JWT
+        payload = {
+            'iat': int(time.time()) - 60,  # Issued at time (with 60s buffer)
+            'exp': int(time.time()) + (10 * 60),  # Expires in 10 minutes
+            'iss': GITHUB_APP_ID  # App ID
+        }
+        jwt_token = jwt.encode(payload, GITHUB_PRIVATE_KEY, algorithm='RS256')
+
+        # 2. Exchange JWT for installation access token
+        headers = {
+            "Authorization": f"Bearer {jwt_token}",
+            "Accept": "application/vnd.github+json"
+        }
+        url = f"https://api.github.com/app/installations/{GITHUB_INSTALLATION_ID}/access_tokens"
+        response = requests.post(url, headers=headers)
+        
+        if response.status_code == 201:
+            return response.json()['token']
+        else:
+            st.error(f"Failed to get GitHub App token: {response.status_code} - {response.text}")
+            return None
+    except Exception as e:
+        st. error(f"Error generating GitHub App token: {e}")
+        return None
+
 # ---- UTILITY ----
 
 def parse_github_issue_url(issue_url):
     """
-    Accepts a URL with or without #issuecomment-...
-    Returns (owner, repo, number) if valid, else None.
+    Accepts a URL with or without #issuecomment-... 
+    Returns (owner, repo, number) if valid, else None. 
     """
     # Remove anchor if present
     url = issue_url.split('#')[0]
-    pattern = r"https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/issues/(?P<number>\d+)"
+    pattern = r"https://github\.com/(? P<owner>[^/]+)/(?P<repo>[^/]+)/issues/(?P<number>\d+)"
     match = re.match(pattern, url)
     if not match:
         return None
@@ -39,15 +76,24 @@ def parse_github_issue_url(issue_url):
 def get_issue_data(issue_url):
     parsed = parse_github_issue_url(issue_url)
     if not parsed:
-        st.error("Invalid GitHub issue URL format. Please paste a full issue URL, e.g. https://github.com/org/repo/issues/123")
+        st.error("Invalid GitHub issue URL format.  Please paste a full issue URL, e.g.  https://github.com/org/repo/issues/123")
         return None, None
     owner, repo, number = parsed
 
+    # Get fresh GitHub App token
+    token = get_github_app_token()
+    if not token:
+        st.error("Could not authenticate with GitHub App.")
+        return None, None
+
     base_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{number}"
-    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json"
+    }
     issue_resp = requests.get(base_url, headers=headers)
     if issue_resp.status_code != 200:
-        st.error(f"Could not fetch the issue from GitHub. Error {issue_resp.status_code}: {issue_resp.text}")
+        st.error(f"Could not fetch the issue from GitHub.  Error {issue_resp.status_code}: {issue_resp.text}")
         return None, None
     issue = issue_resp.json()
 
@@ -61,11 +107,11 @@ def extract_finance_date(issue, comments):
     # Scan issue body first
     if issue and issue.get("body"):
         for tag in FINANCE_TAG_LIST:
-            if tag.lower() in issue["body"].lower():
+            if tag. lower() in issue["body"].lower():
                 return datetime.strptime(issue["created_at"], "%Y-%m-%dT%H:%M:%SZ").date()
     # Scan comments for tags
     for comment in comments:
-        text = comment.get("body", "").lower()
+        text = comment.get("body", ""). lower()
         for tag in FINANCE_TAG_LIST:
             if tag.lower() in text:
                 return datetime.strptime(comment["created_at"], "%Y-%m-%dT%H:%M:%SZ").date()
@@ -73,10 +119,10 @@ def extract_finance_date(issue, comments):
 
 def summarize_and_extract(issue):
     prompt = f"""
-    You are helping fill out an enterprise request tracking spreadsheet.
+    You are helping fill out an enterprise request tracking spreadsheet. 
     Issue Title: {issue['title']}
-    Issue Body: {issue.get('body','')}
-    Labels: {', '.join([l['name'] for l in issue.get('labels',[])])}
+    Issue Body: {issue. get('body','')}
+    Labels: {', '.join([l['name'] for l in issue. get('labels',[])])}
     
     Please extract or infer, in JSON, the following fields:
     - Customer Name (company or org referenced)
@@ -93,7 +139,7 @@ def summarize_and_extract(issue):
             messages=[{"role": "user", "content": prompt}]
         )
         content = response['choices'][0]['message']['content']
-        content = re.sub(r"^```json|```$", "", content).strip()
+        content = re.sub(r"^```json|```$", "", content). strip()
         data = {}
         try:
             import json
@@ -110,11 +156,11 @@ def summarize_and_extract(issue):
 
 def extract_status_by_finance(issue, comments):
     # Same as original
-    author_login = issue.get('user', {}).get('login', '').lower()
+    author_login = issue. get('user', {}).get('login', '').lower()
     body = issue.get('body', '').lower() if issue.get('body') else ""
     status = None
 
-    if author_login in FINANCE_TAGS.values():
+    if author_login in FINANCE_TAGS. values():
         if "approved" in body:
             status = "Approved"
         elif "rejected" in body:
@@ -137,16 +183,16 @@ def extract_status_by_finance(issue, comments):
 
 def append_to_excel(row, excel_file):
     if os.path.exists(excel_file):
-        df = pd.read_excel(excel_file)
+        df = pd. read_excel(excel_file)
     else:
-        df = pd.DataFrame()
+        df = pd. DataFrame()
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     df.to_excel(excel_file, index=False)
 
 # ---- UI ----
 st.title("Enterprise Finance Request Extractor")
 
-issue_url = st.text_input("Paste GitHub Issue URL (e.g. https://github.com/org/repo/issues/123):", key="main_input")
+issue_url = st.text_input("Paste GitHub Issue URL (e.g.  https://github.com/org/repo/issues/123):", key="main_input")
 
 if issue_url:
     if st.button("Process and Extract", key="process_button"):
@@ -172,7 +218,7 @@ if issue_url:
                 request_type = st.text_input("Type of request*", extracted.get("Type of request",""), key="request_type")
                 description = st.text_area("Description / Summary*", extracted.get("Description / Summary",""), key="description")
 
-                # Optional fields — unique keys!
+                # Optional fields — unique keys! 
                 macc = st.text_input("MACC", key="macc")
                 date_move = st.text_input("Date move takes place", key="date_move")
                 length_deal = st.text_input("Length of Original Deal", key="length_deal")
@@ -181,7 +227,7 @@ if issue_url:
                 arr_ghe_metered = st.text_input("ARR of GHE metered", key="arr_ghe_metered")
                 arr_ghe_license = st.text_input("ARR of GHE License", key="arr_ghe_license")
                 arr_ghas_metered = st.text_input("ARR of GHAS metered", key="arr_ghas_metered")
-                arr_ghas_license = st.text_input("ARR of GHAS License", key="arr_ghas_license")
+                arr_ghas_license = st. text_input("ARR of GHAS License", key="arr_ghas_license")
 
                 submitted = st.form_submit_button("Save to Excel")
 
