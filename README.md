@@ -1,99 +1,91 @@
-# Enterprise Finance Request Extractor
+# Enterprise Finance Request Auto-Processor
 
-A Streamlit application that extracts and processes enterprise finance requests from GitHub issues using AI-powered analysis.
+An automated GitHub Action agent that extracts and processes enterprise finance requests from GitHub issues using AI-powered analysis.
+
+> 🤖 **This is now an automated agent!** Previously a Streamlit web app, this has been converted to a fully automated GitHub Action that processes issues automatically when finance team members are mentioned.
 
 ## Features
 
-- Parses GitHub issue URLs to extract request information
-- Uses GitHub Models API (free tier) for AI-powered data extraction
-- Authenticates with GitHub App for issue access
-- Automatically detects finance team involvement
-- Exports data to Excel format
+- **Fully Automated**: Automatically processes issues when finance team is mentioned
+- **AI-Powered Extraction**: Uses GitHub Models API (free tier) for intelligent data extraction
+- **Auto-Detection**: Detects finance team involvement and determines approval status
+- **CSV Export**: Automatically saves data to version-controlled CSV file
+- **Issue Comments**: Posts extracted data back to the issue for visibility
 
-## Setup
+## Quick Start
 
-### 1. Install Dependencies
+### For Repository Admins
 
-```bash
-pip install -r requirements.txt
-```
+1. **Add GitHub Secret**:
+   - Go to Settings → Secrets and variables → Actions
+   - Add secret: `GITHUB_MODELS_TOKEN` with your GitHub Personal Access Token
+   - Get token from: https://github.com/settings/tokens (no special scopes needed)
 
-### 2. Configure Secrets
+2. **That's it!** The agent will automatically activate.
 
-Create a `.streamlit/secrets.toml` file with the following configuration:
+### For Users (Creating Finance Requests)
 
-```toml
-# GitHub App credentials
-GITHUB_APP_ID = "your_app_id"
-GITHUB_INSTALLATION_ID = "your_installation_id"
-GITHUB_PRIVATE_KEY = """
------BEGIN RSA PRIVATE KEY-----
-your_private_key_content_here
------END RSA PRIVATE KEY-----
-"""
+1. **Create an issue** in this repository
+2. **Mention a finance team member** in the issue body or comments:
+   - @anakarlarg
+   - @richpaik  
+   - @meganwins
+3. **Wait a few seconds** - The agent will automatically:
+   - Extract customer name, request type, and description
+   - Save data to `customer_requests.csv`
+   - Comment on your issue with the extracted data
 
-# GitHub Personal Access Token for Models API
-# Get this from: https://github.com/settings/tokens
-# Required scope: No special scopes needed for Models API
-GITHUB_TOKEN = "ghp_your_personal_access_token"
-```
+### For Finance Team (Approving/Rejecting)
 
-### 3. Getting a GitHub Personal Access Token
-
-1. Go to https://github.com/settings/tokens
-2. Click "Generate new token" (classic)
-3. Give it a descriptive name (e.g., "DealDesk AI Models")
-4. No special scopes are required for the free GitHub Models API
-5. Click "Generate token"
-6. Copy the token and add it to your secrets.toml
-
-## GitHub Models API
-
-This application uses the **free tier** of GitHub Models API instead of OpenAI. Key features:
-
-- **No cost**: Free tier available to all GitHub users
-- **OpenAI-compatible**: Uses the same OpenAI Python SDK
-- **Model**: Uses `gpt-4o` (or other available models)
-- **Endpoint**: `https://models.inference.ai.azure.com`
-- **Rate limits**: Typically 50-150 requests/day depending on the model
-
-For more information, see the [GitHub Models documentation](https://docs.github.com/en/github-models/quickstart).
-
-## Usage
-
-1. Run the Streamlit app:
-
-```bash
-streamlit run app.py
-```
-
-2. Paste a GitHub issue URL (e.g., `https://github.com/org/repo/issues/123`)
-3. Click "Process and Extract"
-4. Review and edit the extracted data
-5. Click "Save to Excel" to export
+1. **Comment on the issue** with:
+   - "approved" to mark as Approved
+   - "rejected" to mark as Rejected
+2. The agent will automatically update the status in the CSV
 
 ## How It Works
 
-1. **GitHub Authentication**: Uses GitHub App credentials to access issue data
-2. **AI Extraction**: Sends issue content to GitHub Models API to extract:
-   - Customer Name
-   - Request Type
-   - Status (Approved/Rejected/Under Review)
-   - Description/Summary
-3. **Finance Detection**: Automatically detects when finance team members are involved
-4. **Data Export**: Saves all information to an Excel spreadsheet
+```
+┌─────────────────────────────────────────────────────────────┐
+│  User creates issue and mentions @finance-team-member       │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  GitHub Action triggers automatically                       │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  AI extracts data using GitHub Models API (GPT-4o)          │
+│  • Customer Name                                             │
+│  • Request Type                                              │
+│  • Description                                               │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Agent determines status from finance team comments         │
+│  • Approved / Rejected / Under Review                        │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Data saved to customer_requests.csv in repository          │
+│  Comment posted to issue with extracted data                │
+└─────────────────────────────────────────────────────────────┘
+```
 
-## Fields
+## Data Fields
 
-### Required Fields
-- Customer Name
-- Date (request to finance)
-- Status
-- Link to Issue
-- Type of request
-- Description / Summary
+### Automatically Extracted by AI
+- **Customer Name**: Company or organization referenced in the issue
+- **Date (request to finance)**: When finance team was first mentioned
+- **Status**: Approved, Rejected, or Under Review (based on finance comments)
+- **Link to Issue**: URL to the GitHub issue
+- **Type of request**: Discount, move to metered, both, etc.
+- **Description / Summary**: AI-generated 1-2 sentence summary
 
-### Optional Fields
+### Available for Manual Update (in CSV)
 - MACC
 - Date move takes place
 - Length of Original Deal
@@ -113,25 +105,54 @@ The application recognizes the following finance team members:
 
 ## Output
 
-Data is saved to `customer_requests.xlsx` in the current directory.
+Data is automatically saved to **`customer_requests.csv`** in the repository root, with each issue processed as a new row. The CSV file is version-controlled so you can track all changes over time.
+
+Additionally, the agent posts a comment on each processed issue showing the extracted data.
 
 ## Troubleshooting
 
+### Agent doesn't run automatically
+
+- Ensure you've added `GITHUB_MODELS_TOKEN` secret in repository settings
+- Check that GitHub Actions are enabled for the repository
+- Verify finance team member is mentioned with @ symbol (e.g., @meganwins)
+- Check the Actions tab for workflow run logs
+
 ### "GitHub Models extraction failed"
 
-- Verify your `GITHUB_TOKEN` is valid and not expired
-- Check that you haven't exceeded the daily rate limit
-- Ensure you have internet connectivity
+- Verify your `GITHUB_MODELS_TOKEN` is valid and not expired
+- Check that you haven't exceeded the daily rate limit (50-150 requests/day)
+- Check the Actions workflow logs for detailed error messages
 
-### "Could not authenticate with GitHub App"
+### Status not updating correctly
 
-- Verify your `GITHUB_APP_ID`, `GITHUB_INSTALLATION_ID`, and `GITHUB_PRIVATE_KEY` are correct
-- Ensure the GitHub App has access to the repository containing the issue
+- Finance team must comment with the exact words "approved" or "rejected"
+- Comments must come from recognized finance team member accounts (@anakarlarg, @richpaik, @meganwins)
+- Status defaults to "Under Review" if no approval/rejection is found
 
-### "Invalid GitHub issue URL format"
+### CSV file not updating
 
-- URL must be in the format: `https://github.com/owner/repo/issues/123`
-- Remove any anchor tags (e.g., `#issuecomment-...`)
+- Check the Actions tab to see if the workflow ran successfully
+- Verify the workflow has write permissions to the repository
+- Check for errors in the workflow logs
+
+## Legacy Web Application
+
+The previous Streamlit web application (`app.py`) is still available in the repository but is no longer the primary method. The automated agent is now the recommended approach.
+
+To use the old web app:
+1. Install dependencies: `pip install -r requirements.txt`
+2. Configure `.streamlit/secrets.toml` (see `.streamlit/secrets.toml.template`)
+3. Run: `streamlit run app.py`
+
+## Migration to Automated Agent
+
+**Why automated?**
+- ✅ No manual intervention required
+- ✅ Processes issues instantly when finance team is mentioned
+- ✅ Data saved automatically to version-controlled CSV
+- ✅ Transparent - all processing visible in issue comments
+- ✅ Same free GitHub Models API for AI processing
 
 ## License
 

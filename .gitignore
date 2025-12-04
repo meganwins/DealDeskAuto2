@@ -37,9 +37,9 @@ env/
 .DS_Store
 Thumbs.db
 
-# Excel files (data)
+# Excel files (legacy app)
 *.xlsx
-customer_requests.xlsx
+!customer_requests.csv
 
 # Streamlit
 .streamlit/secrets.toml
